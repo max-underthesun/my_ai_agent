@@ -31,11 +31,16 @@ class Api::AgentController < ApplicationController
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"] = "application/json"
     request["Authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    request.body = {
+    body = {
       model: ENV.fetch("OPENAI_MODEL", "gpt-4o-mini"),
       input: user_query,
       stream: true
-    }.to_json
+    }
+
+    max_tokens = params[:max_output_tokens].to_i
+    body[:max_output_tokens] = max_tokens if max_tokens > 0
+
+    request.body = body.to_json
 
     http.request(request) do |openai_response|
       unless openai_response.is_a?(Net::HTTPSuccess)

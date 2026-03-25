@@ -1,11 +1,13 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setQuery, sendQuery, stopQuery, clearResponse } from "../store/agentSlice";
+import { setQuery, sendQuery, stopQuery, clearResponse, setMaxOutputTokens } from "../store/agentSlice";
 
 export default function QueryForm() {
   const dispatch = useDispatch();
-  const { query, lastQuery, response, status, error, usage } = useSelector((state) => state.agent);
+  const { query, lastQuery, response, status, error, usage, maxOutputTokens } = useSelector((state) => state.agent);
   const scrollRef = useRef(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -18,6 +20,23 @@ export default function QueryForm() {
     if (query.trim()) {
       dispatch(sendQuery(query));
     }
+  };
+
+  const handleOptionsOpen = () => {
+    setTokenInput(maxOutputTokens || "");
+    setShowOptions(true);
+  };
+
+  const handleOptionsSave = () => {
+    const val = parseInt(tokenInput, 10);
+    dispatch(setMaxOutputTokens(val > 0 ? val : null));
+    setShowOptions(false);
+  };
+
+  const handleOptionsClear = () => {
+    dispatch(setMaxOutputTokens(null));
+    setTokenInput("");
+    setShowOptions(false);
   };
 
   return (
@@ -56,6 +75,11 @@ export default function QueryForm() {
             onChange={(e) => dispatch(setQuery(e.target.value))}
           />
         </div>
+        {maxOutputTokens && (
+          <div className="text-muted small mb-2">
+            Max output tokens limit: {maxOutputTokens}
+          </div>
+        )}
         <button
           type="submit"
           className="btn btn-primary me-2"
@@ -75,12 +99,19 @@ export default function QueryForm() {
         {(response || status === "stopped") && status !== "loading" && (
           <button
             type="button"
-            className="btn btn-outline-secondary"
+            className="btn btn-outline-secondary me-2"
             onClick={() => dispatch(clearResponse())}
           >
             Clear
           </button>
         )}
+        <button
+          type="button"
+          className="btn btn-outline-info"
+          onClick={handleOptionsOpen}
+        >
+          Options
+        </button>
       </form>
 
       {(status === "loading" || usage) && (
@@ -93,6 +124,38 @@ export default function QueryForm() {
               Tokens — input: {usage.input_tokens}, output: {usage.output_tokens}, total: {usage.total_tokens}
             </span>
           )}
+        </div>
+      )}
+
+      {showOptions && (
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div className="modal-dialog modal-sm">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Options</h5>
+                <button type="button" className="btn-close" onClick={() => setShowOptions(false)} />
+              </div>
+              <div className="modal-body">
+                <label className="form-label">Max output tokens</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="No limit"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  min="1"
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={handleOptionsClear}>
+                  Clear
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleOptionsSave}>
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
