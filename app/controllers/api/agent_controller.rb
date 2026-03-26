@@ -1,58 +1,45 @@
-require "net/http"
-
 class Api::AgentController < ApplicationController
   skip_before_action :verify_authenticity_token
 
-  OPENAI_TIMEOUT = 30 # seconds
+  include ActionController::Live
 
   def query
     user_query = params[:query].to_s.strip
     if user_query.blank?
-      return render json: { error: "Query cannot be blank" }, status: :unprocessable_entity
+      response.headers["Content-Type"] = "application/json"
+      response.stream.write({ error: "Query cannot be blank" }.to_json)
+      response.stream.close
+      return
     end
 
-    uri = URI("https://api.openai.com/v1/responses")
+    set_sse_headers
 
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.open_timeout = OPENAI_TIMEOUT
-    http.read_timeout = OPENAI_TIMEOUT
-
-    request = Net::HTTP::Post.new(uri)
-    request["Content-Type"] = "application/json"
-    request["Authorization"] = "Bearer #{ENV.fetch("OPENAI_API_KEY")}"
-    request.body = {
-      model: ENV.fetch("OPENAI_MODEL", "gpt-4o-mini"),
-      input: user_query
-    }.to_json
-
-    response = http.request(request)
-    data = JSON.parse(response.body)
-
-    if response.is_a?(Net::HTTPSuccess)
-      answer = data
-        .fetch("output", [])
-        .flat_map { |item| item.fetch("content", []) }
-        .select { |content| content["type"] == "output_text" }
-        .map { |content| content["text"] }
-        .join("\n")
-        .strip
-
-      if answer.present?
-        render json: { response: answer }
-      else
-        render json: { error: "Unexpected response format from OpenAI" }, status: :bad_gateway
-      end
-    else
-      render json: { error: data.dig("error", "message") || "OpenAI API error" }, status: :bad_gateway
+    client = Openai::Client.new
+    max_tokens = params[:max_output_tokens].to_i
+    client.stream(input: user_query, max_output_tokens: max_tokens > 0 ? max_tokens : nil) do |event|
+      mapped = Openai::ResponseMapper.map(event)
+      response.stream.write("data: #{mapped.to_json}\n\n") if mapped
     end
+  rescue Openai::Client::ApiError => e
+    response.stream.write("data: #{({ error: e.message }).to_json}\n\n")
   rescue Net::OpenTimeout, Net::ReadTimeout
-    render json: { error: "OpenAI request timed out" }, status: :gateway_timeout
-  rescue JSON::ParserError
-    render json: { error: "Invalid response from OpenAI" }, status: :bad_gateway
+    response.stream.write("data: #{({ error: "OpenAI request timed out" }).to_json}\n\n")
+  rescue IOError
+    # Client disconnected (Stop button pressed) — expected
   rescue StandardError => e
     Rails.logger.error "AgentController error: #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace&.first(5)&.join("\n")
-    render json: { error: e.message }, status: :internal_server_error
+    response.stream.write("data: #{({ error: e.message }).to_json}\n\n") rescue nil
+  ensure
+    response.stream.close rescue nil
+  end
+
+  private
+
+  def set_sse_headers
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Connection"] = "keep-alive"
+    response.headers["X-Accel-Buffering"] = "no"
   end
 end
