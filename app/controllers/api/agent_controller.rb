@@ -3,6 +3,13 @@ class Api::AgentController < ApplicationController
 
   include ActionController::Live
 
+  def models
+    client = Openai::Client.new
+    render json: { models: client.list_chat_models, default_model: ENV.fetch("OPENAI_MODEL") }
+  rescue StandardError => e
+    render json: { error: e.message }, status: :internal_server_error
+  end
+
   def query
     user_query = params[:query].to_s.strip
     if user_query.blank?
@@ -14,7 +21,8 @@ class Api::AgentController < ApplicationController
 
     set_sse_headers
 
-    client = Openai::Client.new
+    model = params[:model].presence
+    client = model ? Openai::Client.new(model: model) : Openai::Client.new
     max_tokens = params[:max_output_tokens].to_i
     client.stream(input: user_query, max_output_tokens: max_tokens > 0 ? max_tokens : nil) do |event|
       mapped = Openai::ResponseMapper.map(event)

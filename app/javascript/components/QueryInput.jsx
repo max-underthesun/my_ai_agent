@@ -5,6 +5,10 @@ export default function QueryInput({
   status,
   response,
   maxOutputTokens,
+  models,
+  defaultModel,
+  selectedModel,
+  onModelChange,
   onQueryChange,
   onSubmit,
   onStop,
@@ -29,11 +33,28 @@ export default function QueryInput({
           onChange={(e) => onQueryChange(e.target.value)}
         />
       </div>
-      {maxOutputTokens && (
-        <div className="text-muted small mb-2">
-          Max output tokens limit: {maxOutputTokens}
+      <div className="d-flex align-items-start justify-content-between mb-2">
+        <div>
+          {maxOutputTokens && (
+            <div className="text-muted small">
+              Max output tokens limit: {maxOutputTokens}
+            </div>
+          )}
         </div>
-      )}
+        {models.length > 0 && (
+          <select
+            className="form-select form-select-sm"
+            style={{ width: "auto" }}
+            value={selectedModel || ""}
+            onChange={(e) => onModelChange(e.target.value || null)}
+          >
+            <option value="">Default model{defaultModel ? ` (${defaultModel})` : ""}</option>
+            {models.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        )}
+      </div>
       <button
         type="submit"
         className="btn btn-primary me-2"
