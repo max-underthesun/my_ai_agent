@@ -13,5 +13,6 @@ Rails.application.routes.draw do
 
   namespace :api do
     post "agent/query", to: "agent#query"
+    get "agent/models", to: "agent#models"
   end
 end

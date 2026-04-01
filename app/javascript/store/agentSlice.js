@@ -2,8 +2,23 @@ import { createSlice } from "@reduxjs/toolkit";
 
 let abortController = null;
 
+export const fetchModels = () => async (dispatch) => {
+  try {
+    const res = await fetch("/api/agent/models");
+    const data = await res.json();
+    if (data.models) {
+      dispatch(setModels(data.models));
+    }
+    if (data.default_model) {
+      dispatch(setDefaultModel(data.default_model));
+    }
+  } catch (e) {
+    // Models fetch failed — user can still type model manually or use default
+  }
+};
+
 export const sendQuery = (query) => async (dispatch, getState) => {
-  const { maxOutputTokens } = getState().agent;
+  const { maxOutputTokens, selectedModel } = getState().agent;
   abortController = new AbortController();
 
   dispatch(startQuery(query));
@@ -12,7 +27,11 @@ export const sendQuery = (query) => async (dispatch, getState) => {
     const response = await fetch("/api/agent/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, max_output_tokens: maxOutputTokens || undefined }),
+      body: JSON.stringify({
+        query,
+        max_output_tokens: maxOutputTokens || undefined,
+        model: selectedModel || undefined,
+      }),
       signal: abortController.signal,
     });
 
@@ -80,6 +99,9 @@ const agentSlice = createSlice({
     error: null,
     usage: null,
     maxOutputTokens: null,
+    models: [],
+    defaultModel: null,
+    selectedModel: null,
   },
   reducers: {
     setQuery(state, action) {
@@ -110,6 +132,15 @@ const agentSlice = createSlice({
     setMaxOutputTokens(state, action) {
       state.maxOutputTokens = action.payload;
     },
+    setModels(state, action) {
+      state.models = action.payload;
+    },
+    setDefaultModel(state, action) {
+      state.defaultModel = action.payload;
+    },
+    setSelectedModel(state, action) {
+      state.selectedModel = action.payload;
+    },
     clearResponse(state) {
       state.lastQuery = null;
       state.response = "";
@@ -128,6 +159,9 @@ export const {
   setStopped,
   setError,
   setMaxOutputTokens,
+  setModels,
+  setDefaultModel,
+  setSelectedModel,
   clearResponse,
 } = agentSlice.actions;
 
