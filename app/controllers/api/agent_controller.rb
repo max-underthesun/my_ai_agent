@@ -24,7 +24,8 @@ class Api::AgentController < ApplicationController
     model = params[:model].presence
     client = model ? Openai::Client.new(model: model) : Openai::Client.new
     max_tokens = params[:max_output_tokens].to_i
-    client.stream(input: user_query, max_output_tokens: max_tokens > 0 ? max_tokens : nil) do |event|
+    temperature = params[:temperature].present? ? params[:temperature].to_f : nil
+    client.stream(input: user_query, max_output_tokens: max_tokens > 0 ? max_tokens : nil, temperature: temperature) do |event|
       mapped = Openai::ResponseMapper.map(event)
       response.stream.write("data: #{mapped.to_json}\n\n") if mapped
     end
