@@ -18,7 +18,7 @@ export const fetchModels = () => async (dispatch) => {
 };
 
 export const sendQuery = (query) => async (dispatch, getState) => {
-  const { maxOutputTokens, selectedModel } = getState().agent;
+  const { maxOutputTokens, temperature, selectedModel } = getState().agent;
   abortController = new AbortController();
 
   dispatch(startQuery(query));
@@ -30,6 +30,7 @@ export const sendQuery = (query) => async (dispatch, getState) => {
       body: JSON.stringify({
         query,
         max_output_tokens: maxOutputTokens || undefined,
+        temperature: temperature != null ? temperature : undefined,
         model: selectedModel || undefined,
       }),
       signal: abortController.signal,
@@ -99,6 +100,7 @@ const agentSlice = createSlice({
     error: null,
     usage: null,
     maxOutputTokens: null,
+    temperature: null,
     models: [],
     defaultModel: null,
     selectedModel: null,
@@ -132,6 +134,9 @@ const agentSlice = createSlice({
     setMaxOutputTokens(state, action) {
       state.maxOutputTokens = action.payload;
     },
+    setTemperature(state, action) {
+      state.temperature = action.payload;
+    },
     setModels(state, action) {
       state.models = action.payload;
     },
@@ -159,6 +164,7 @@ export const {
   setStopped,
   setError,
   setMaxOutputTokens,
+  setTemperature,
   setModels,
   setDefaultModel,
   setSelectedModel,

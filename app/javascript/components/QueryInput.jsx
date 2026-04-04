@@ -5,6 +5,7 @@ export default function QueryInput({
   status,
   response,
   maxOutputTokens,
+  temperature,
   models,
   defaultModel,
   selectedModel,
@@ -35,9 +36,10 @@ export default function QueryInput({
       </div>
       <div className="d-flex align-items-start justify-content-between mb-2">
         <div>
-          {maxOutputTokens && (
+          {(maxOutputTokens || temperature != null) && (
             <div className="text-muted small">
-              Max output tokens limit: {maxOutputTokens}
+              {maxOutputTokens && <div>Max output tokens: {maxOutputTokens}</div>}
+              {temperature != null && <div>Temperature: {temperature}</div>}
             </div>
           )}
         </div>

@@ -37,7 +37,7 @@ module Openai
         .sort
     end
 
-    def stream(input:, max_output_tokens: nil, &block)
+    def stream(input:, max_output_tokens: nil, temperature: nil, &block)
       uri = URI(ENDPOINT)
 
       http = Net::HTTP.new(uri.host, uri.port)
@@ -48,7 +48,7 @@ module Openai
       request = Net::HTTP::Post.new(uri)
       request["Content-Type"] = "application/json"
       request["Authorization"] = "Bearer #{@api_key}"
-      request.body = build_body(input, max_output_tokens).to_json
+      request.body = build_body(input, max_output_tokens, temperature).to_json
 
       http.request(request) do |response|
         unless response.is_a?(Net::HTTPSuccess)
@@ -69,13 +69,14 @@ module Openai
 
     private
 
-    def build_body(input, max_output_tokens)
+    def build_body(input, max_output_tokens, temperature)
       body = {
         model: @model,
         input: input,
         stream: true
       }
       body[:max_output_tokens] = max_output_tokens if max_output_tokens&.positive?
+      body[:temperature] = temperature if temperature
       body
     end
 
