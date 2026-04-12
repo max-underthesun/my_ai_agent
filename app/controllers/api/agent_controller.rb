@@ -25,9 +25,16 @@ class Api::AgentController < ApplicationController
     client = model ? Openai::Client.new(model: model) : Openai::Client.new
     max_tokens = params[:max_output_tokens].to_i
     temperature = params[:temperature].present? ? params[:temperature].to_f : nil
+    started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     client.stream(input: user_query, max_output_tokens: max_tokens > 0 ? max_tokens : nil, temperature: temperature) do |event|
       mapped = Openai::ResponseMapper.map(event)
-      response.stream.write("data: #{mapped.to_json}\n\n") if mapped
+      if mapped
+        if mapped[:done]
+          duration = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at).round(2)
+          mapped[:duration] = duration
+        end
+        response.stream.write("data: #{mapped.to_json}\n\n")
+      end
     end
   rescue Openai::Client::ApiError => e
     response.stream.write("data: #{({ error: e.message }).to_json}\n\n")

@@ -66,7 +66,7 @@ export const sendQuery = (query) => async (dispatch, getState) => {
           dispatch(setError(event.error));
           return;
         } else if (event.done) {
-          dispatch(setDone(event.usage || null));
+          dispatch(setDone({ usage: event.usage || null, duration: event.duration || null }));
           return;
         }
       }
@@ -99,6 +99,7 @@ const agentSlice = createSlice({
     status: "idle", // idle | loading | succeeded | stopped | failed
     error: null,
     usage: null,
+    duration: null,
     maxOutputTokens: null,
     temperature: null,
     models: [],
@@ -116,13 +117,15 @@ const agentSlice = createSlice({
       state.status = "loading";
       state.error = null;
       state.usage = null;
+      state.duration = null;
     },
     appendResponse(state, action) {
       state.response += action.payload;
     },
     setDone(state, action) {
       state.status = "succeeded";
-      state.usage = action.payload;
+      state.usage = action.payload?.usage || null;
+      state.duration = action.payload?.duration || null;
     },
     setStopped(state) {
       state.status = "stopped";
@@ -152,6 +155,7 @@ const agentSlice = createSlice({
       state.status = "idle";
       state.error = null;
       state.usage = null;
+      state.duration = null;
     },
   },
 });

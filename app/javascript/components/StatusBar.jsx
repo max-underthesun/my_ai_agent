@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function StatusBar({ status, usage }) {
+export default function StatusBar({ status, usage, duration }) {
   if (status !== "loading" && !usage) return null;
 
   return (
@@ -11,6 +11,7 @@ export default function StatusBar({ status, usage }) {
       {usage && (
         <span>
           Tokens — input: {usage.input_tokens}, output: {usage.output_tokens}, total: {usage.total_tokens}
+          {duration != null && <> | Time: {duration}s</>}
         </span>
       )}
     </div>

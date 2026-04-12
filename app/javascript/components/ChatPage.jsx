@@ -8,7 +8,20 @@ import OptionsModal from "./OptionsModal";
 
 export default function ChatPage() {
   const dispatch = useDispatch();
-  const { query, lastQuery, response, status, error, usage, maxOutputTokens, temperature, models, defaultModel, selectedModel } = useSelector((state) => state.agent);
+  const {
+    query,
+    lastQuery,
+    response,
+    status,
+    error,
+    usage,
+    duration,
+    maxOutputTokens,
+    temperature,
+    models,
+    defaultModel,
+    selectedModel,
+  } = useSelector((state) => state.agent);
   const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
@@ -41,7 +54,7 @@ export default function ChatPage() {
         onOptionsOpen={() => setShowOptions(true)}
       />
 
-      <StatusBar status={status} usage={usage} />
+      <StatusBar status={status} usage={usage} duration={duration} />
 
       <OptionsModal
         show={showOptions}
