@@ -3,20 +3,24 @@ import RequestCard from "./RequestCard";
 import ResponseCard from "./ResponseCard";
 import ErrorAlert from "./ErrorAlert";
 
-export default function MessageArea({ lastQuery, response, error, isFailed }) {
+export default function MessageArea({ messages, streamingResponse, error, isFailed }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [response]);
+  }, [messages, streamingResponse]);
 
   return (
     <div ref={scrollRef} className="flex-grow-1" style={{ overflowY: "auto", minHeight: 0 }}>
-      <RequestCard text={lastQuery} />
+      {messages.map((msg, i) => (
+        msg.role === "user"
+          ? <RequestCard key={i} text={msg.content} />
+          : <ResponseCard key={i} text={msg.content} />
+      ))}
+      {streamingResponse && <ResponseCard text={streamingResponse} />}
       {isFailed && <ErrorAlert message={error} />}
-      <ResponseCard text={response} />
     </div>
   );
 }
