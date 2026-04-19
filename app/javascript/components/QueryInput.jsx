@@ -3,7 +3,6 @@ import React from "react";
 export default function QueryInput({
   query,
   status,
-  response,
   maxOutputTokens,
   temperature,
   models,
@@ -13,7 +12,6 @@ export default function QueryInput({
   onQueryChange,
   onSubmit,
   onStop,
-  onClear,
   onOptionsOpen,
 }) {
   const handleSubmit = (e) => {
@@ -71,15 +69,6 @@ export default function QueryInput({
           onClick={onStop}
         >
           Stop
-        </button>
-      )}
-      {(response || status === "stopped") && status !== "loading" && (
-        <button
-          type="button"
-          className="btn btn-outline-secondary me-2"
-          onClick={onClear}
-        >
-          Clear
         </button>
       )}
       <button

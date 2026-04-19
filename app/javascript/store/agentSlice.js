@@ -17,8 +17,46 @@ export const fetchModels = () => async (dispatch) => {
   }
 };
 
+export const fetchConversations = () => async (dispatch) => {
+  try {
+    const res = await fetch("/api/conversations");
+    const data = await res.json();
+    dispatch(setConversations(data.conversations || []));
+  } catch (e) {
+    // silently fail
+  }
+};
+
+export const loadConversation = (id) => async (dispatch) => {
+  try {
+    const res = await fetch(`/api/conversations/${id}`);
+    const data = await res.json();
+    dispatch(setActiveConversation(data));
+  } catch (e) {
+    dispatch(setError("Failed to load conversation"));
+  }
+};
+
+export const deleteConversation = (id) => async (dispatch, getState) => {
+  try {
+    await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+    const { conversationId } = getState().agent;
+    if (conversationId === id) {
+      dispatch(resetChat());
+    }
+    dispatch(fetchConversations());
+  } catch (e) {
+    // silently fail
+  }
+};
+
 export const sendQuery = (query) => async (dispatch, getState) => {
-  const { maxOutputTokens, temperature, selectedModel } = getState().agent;
+  const {
+    maxOutputTokens,
+    temperature,
+    selectedModel,
+    conversationId,
+  } = getState().agent;
   abortController = new AbortController();
 
   dispatch(startQuery(query));
@@ -32,6 +70,7 @@ export const sendQuery = (query) => async (dispatch, getState) => {
         max_output_tokens: maxOutputTokens || undefined,
         temperature: temperature != null ? temperature : undefined,
         model: selectedModel || undefined,
+        conversation_id: conversationId || undefined,
       }),
       signal: abortController.signal,
     });
@@ -60,13 +99,16 @@ export const sendQuery = (query) => async (dispatch, getState) => {
 
         const event = JSON.parse(cleaned);
 
-        if (event.delta) {
+        if (event.conversation_id) {
+          dispatch(setConversationId(event.conversation_id));
+        } else if (event.delta) {
           dispatch(appendResponse(event.delta));
         } else if (event.error) {
           dispatch(setError(event.error));
           return;
         } else if (event.done) {
           dispatch(setDone({ usage: event.usage || null, duration: event.duration || null }));
+          dispatch(fetchConversations());
           return;
         }
       }
@@ -93,13 +135,16 @@ export const stopQuery = () => () => {
 const agentSlice = createSlice({
   name: "agent",
   initialState: {
+    theme: typeof localStorage !== "undefined" ? (localStorage.getItem("theme") || "light") : "light",
     query: "",
-    lastQuery: null,
-    response: "",
-    status: "idle", // idle | loading | succeeded | stopped | failed
+    messages: [],
+    streamingResponse: "",
+    status: "idle",
     error: null,
     usage: null,
     duration: null,
+    conversationId: null,
+    conversations: [],
     maxOutputTokens: null,
     temperature: null,
     models: [],
@@ -110,29 +155,68 @@ const agentSlice = createSlice({
     setQuery(state, action) {
       state.query = action.payload;
     },
+    setTheme(state, action) {
+      state.theme = action.payload;
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("theme", action.payload);
+      }
+    },
     startQuery(state, action) {
-      state.lastQuery = action.payload;
+      state.messages = [...state.messages, { role: "user", content: action.payload }];
       state.query = "";
-      state.response = "";
+      state.streamingResponse = "";
       state.status = "loading";
       state.error = null;
       state.usage = null;
       state.duration = null;
     },
     appendResponse(state, action) {
-      state.response += action.payload;
+      state.streamingResponse += action.payload;
     },
     setDone(state, action) {
       state.status = "succeeded";
       state.usage = action.payload?.usage || null;
       state.duration = action.payload?.duration || null;
+      if (state.streamingResponse) {
+        state.messages = [...state.messages, { role: "assistant", content: state.streamingResponse }];
+        state.streamingResponse = "";
+      }
     },
     setStopped(state) {
       state.status = "stopped";
+      state.messages.pop();
+      state.streamingResponse = "";
     },
     setError(state, action) {
       state.status = "failed";
       state.error = action.payload;
+      state.messages.pop();
+      state.streamingResponse = "";
+    },
+    setConversationId(state, action) {
+      state.conversationId = action.payload;
+    },
+    setConversations(state, action) {
+      state.conversations = action.payload;
+    },
+    setActiveConversation(state, action) {
+      const data = action.payload;
+      state.conversationId = data.id;
+      state.messages = data.messages || [];
+      state.streamingResponse = "";
+      state.status = "idle";
+      state.error = null;
+      state.usage = null;
+      state.duration = null;
+    },
+    resetChat(state) {
+      state.conversationId = null;
+      state.messages = [];
+      state.streamingResponse = "";
+      state.status = "idle";
+      state.error = null;
+      state.usage = null;
+      state.duration = null;
     },
     setMaxOutputTokens(state, action) {
       state.maxOutputTokens = action.payload;
@@ -149,30 +233,26 @@ const agentSlice = createSlice({
     setSelectedModel(state, action) {
       state.selectedModel = action.payload;
     },
-    clearResponse(state) {
-      state.lastQuery = null;
-      state.response = "";
-      state.status = "idle";
-      state.error = null;
-      state.usage = null;
-      state.duration = null;
-    },
   },
 });
 
 export const {
   setQuery,
+  setTheme,
   startQuery,
   appendResponse,
   setDone,
   setStopped,
   setError,
+  setConversationId,
+  setConversations,
+  setActiveConversation,
+  resetChat,
   setMaxOutputTokens,
   setTemperature,
   setModels,
   setDefaultModel,
   setSelectedModel,
-  clearResponse,
 } = agentSlice.actions;
 
 export default agentSlice.reducer;
