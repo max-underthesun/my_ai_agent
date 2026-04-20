@@ -11,16 +11,26 @@ class Agent
 
     started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     assistant_text = +""
+    final_usage = nil
 
-    @client.stream(input: @conversation.messages, max_output_tokens: max_output_tokens, temperature: temperature) do |event|
+    @client.stream(input: @conversation.api_messages, max_output_tokens: max_output_tokens, temperature: temperature) do |event|
       mapped = Openai::ResponseMapper.map(event)
       next unless mapped
+
+      raise Openai::Client::ApiError, mapped[:error] if mapped[:error]
 
       assistant_text << mapped[:delta] if mapped[:delta]
 
       if mapped[:done]
-        mapped[:duration] = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at).round(2)
-        @conversation.add_message(role: "assistant", content: assistant_text)
+        duration = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at).round(2)
+        mapped[:duration] = duration
+        final_usage = mapped[:usage]
+        @conversation.add_message(
+          role: "assistant",
+          content: assistant_text,
+          usage: final_usage,
+          duration: duration
+        )
         @conversation.update_title_from_query(query)
       end
 

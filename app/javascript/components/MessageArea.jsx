@@ -17,7 +17,7 @@ export default function MessageArea({ messages, streamingResponse, error, isFail
       {messages.map((msg, i) => (
         msg.role === "user"
           ? <RequestCard key={i} text={msg.content} />
-          : <ResponseCard key={i} text={msg.content} />
+          : <ResponseCard key={i} text={msg.content} usage={msg.usage} duration={msg.duration} />
       ))}
       {streamingResponse && <ResponseCard text={streamingResponse} />}
       {isFailed && <ErrorAlert message={error} />}

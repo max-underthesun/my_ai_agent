@@ -30,8 +30,6 @@ export default function ChatPage() {
     streamingResponse,
     status,
     error,
-    usage,
-    duration,
     conversationId,
     conversations,
     maxOutputTokens,
@@ -88,7 +86,7 @@ export default function ChatPage() {
           onOptionsOpen={() => setShowOptions(true)}
         />
 
-        <StatusBar status={status} usage={usage} duration={duration} />
+        <StatusBar status={status} messages={messages} />
 
         <OptionsModal
           show={showOptions}

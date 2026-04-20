@@ -141,8 +141,6 @@ const agentSlice = createSlice({
     streamingResponse: "",
     status: "idle",
     error: null,
-    usage: null,
-    duration: null,
     conversationId: null,
     conversations: [],
     maxOutputTokens: null,
@@ -167,18 +165,17 @@ const agentSlice = createSlice({
       state.streamingResponse = "";
       state.status = "loading";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
     },
     appendResponse(state, action) {
       state.streamingResponse += action.payload;
     },
     setDone(state, action) {
       state.status = "succeeded";
-      state.usage = action.payload?.usage || null;
-      state.duration = action.payload?.duration || null;
       if (state.streamingResponse) {
-        state.messages = [...state.messages, { role: "assistant", content: state.streamingResponse }];
+        const msg = { role: "assistant", content: state.streamingResponse };
+        if (action.payload?.usage) msg.usage = action.payload.usage;
+        if (action.payload?.duration != null) msg.duration = action.payload.duration;
+        state.messages = [...state.messages, msg];
         state.streamingResponse = "";
       }
     },
@@ -206,8 +203,6 @@ const agentSlice = createSlice({
       state.streamingResponse = "";
       state.status = "idle";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
     },
     resetChat(state) {
       state.conversationId = null;
@@ -215,8 +210,6 @@ const agentSlice = createSlice({
       state.streamingResponse = "";
       state.status = "idle";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
     },
     setMaxOutputTokens(state, action) {
       state.maxOutputTokens = action.payload;
