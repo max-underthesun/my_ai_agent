@@ -13,19 +13,37 @@ const dotStyle = `
 .streaming-dots span:nth-child(3) { animation-delay: 0.4s; }
 `;
 
-export default function StatusBar({ status, usage, duration }) {
-  if (status !== "loading" && !usage) return null;
+function computeTotals(messages) {
+  const totals = { input_tokens: 0, output_tokens: 0, total_tokens: 0, duration: 0 };
+  for (const msg of messages) {
+    if (msg.usage) {
+      totals.input_tokens += msg.usage.input_tokens || 0;
+      totals.output_tokens += msg.usage.output_tokens || 0;
+      totals.total_tokens += msg.usage.total_tokens || 0;
+    }
+    if (msg.duration) {
+      totals.duration += msg.duration;
+    }
+  }
+  totals.duration = Math.round(totals.duration * 100) / 100;
+  return totals;
+}
+
+export default function StatusBar({ status, messages }) {
+  const totals = computeTotals(messages);
+  const hasData = totals.total_tokens > 0;
+
+  if (status !== "loading" && !hasData) return null;
 
   return (
     <div className="text-muted small mt-1 mb-2">
       <style>{dotStyle}</style>
-      {status === "loading" && !usage && (
+      {status === "loading" && (
         <span>Streaming<span className="streaming-dots"><span>.</span><span>.</span><span>.</span></span></span>
       )}
-      {usage && (
+      {status !== "loading" && hasData && (
         <span>
-          Tokens — input: {usage.input_tokens}, output: {usage.output_tokens}, total: {usage.total_tokens}
-          {duration != null && <> | Time: {duration}s</>}
+          Conversation — input: {totals.input_tokens}, output: {totals.output_tokens}, total: {totals.total_tokens} | Time: {totals.duration}s
         </span>
       )}
     </div>

@@ -13,6 +13,7 @@ class ConversationRepository
     Conversation.new(
       id: data[:id],
       title: data[:title],
+      summary: data[:summary],
       messages: data[:messages],
       created_at: data[:created_at],
       updated_at: data[:updated_at]

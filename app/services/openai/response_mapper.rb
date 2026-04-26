@@ -16,6 +16,18 @@ module Openai
           }
         end
         done_data
+      when "response.failed"
+        message = event.dig("response", "error", "message") || "Response failed"
+        { error: message }
+      when "response.incomplete"
+        reason = event.dig("response", "incomplete_details", "reason") || "unknown reason"
+        { error: "Response incomplete: #{reason}" }
+      when "error"
+        message = event["message"] || event.dig("error", "message") || "Stream error"
+        { error: message }
+      else
+        Rails.logger.debug "Openai::ResponseMapper unhandled event type: #{event["type"]}"
+        nil
       end
     end
   end

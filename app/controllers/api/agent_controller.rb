@@ -29,7 +29,10 @@ module Api
         repo.create
       end
 
-      agent = Agent.new(conversation: conversation, model: params[:model].presence)
+      client = params[:model].present? ? Openai::Client.new(model: params[:model]) : Openai::Client.new
+      strategy = build_context_strategy(client)
+
+      agent = Agent.new(conversation: conversation, client: client, context_strategy: strategy)
       max_tokens = params[:max_output_tokens].to_i
       temperature = params[:temperature].present? ? params[:temperature].to_f : nil
 
@@ -58,6 +61,22 @@ module Api
     end
 
     private
+
+    def build_context_strategy(client)
+      if params[:keep_last_n].present?
+        ContextStrategies::KeepLastN.new(
+          n: params[:keep_last_n].to_i,
+          summarizer: Openai::Summarizer.new(client: client)
+        )
+      elsif params[:auto_compress]
+        ContextStrategies::AutoCompression.new(
+          client: client,
+          summarizer: Openai::Summarizer.new(client: client)
+        )
+      else
+        ContextStrategies::NoCompression.new
+      end
+    end
 
     def set_sse_headers
       response.headers["Content-Type"] = "text/event-stream"

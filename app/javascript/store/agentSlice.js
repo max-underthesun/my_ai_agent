@@ -56,6 +56,8 @@ export const sendQuery = (query) => async (dispatch, getState) => {
     temperature,
     selectedModel,
     conversationId,
+    autoCompress,
+    keepLastN,
   } = getState().agent;
   abortController = new AbortController();
 
@@ -71,6 +73,8 @@ export const sendQuery = (query) => async (dispatch, getState) => {
         temperature: temperature != null ? temperature : undefined,
         model: selectedModel || undefined,
         conversation_id: conversationId || undefined,
+        auto_compress: autoCompress || undefined,
+        keep_last_n: keepLastN || undefined,
       }),
       signal: abortController.signal,
     });
@@ -101,6 +105,11 @@ export const sendQuery = (query) => async (dispatch, getState) => {
 
         if (event.conversation_id) {
           dispatch(setConversationId(event.conversation_id));
+        } else if (event.compressing) {
+          dispatch(setCompressing(true));
+        } else if (event.compressed) {
+          dispatch(setCompressing(false));
+          dispatch(setSummary(event.summary));
         } else if (event.delta) {
           dispatch(appendResponse(event.delta));
         } else if (event.error) {
@@ -141,12 +150,14 @@ const agentSlice = createSlice({
     streamingResponse: "",
     status: "idle",
     error: null,
-    usage: null,
-    duration: null,
     conversationId: null,
     conversations: [],
+    summary: null,
+    compressing: false,
     maxOutputTokens: null,
     temperature: null,
+    autoCompress: false,
+    keepLastN: null,
     models: [],
     defaultModel: null,
     selectedModel: null,
@@ -167,18 +178,17 @@ const agentSlice = createSlice({
       state.streamingResponse = "";
       state.status = "loading";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
     },
     appendResponse(state, action) {
       state.streamingResponse += action.payload;
     },
     setDone(state, action) {
       state.status = "succeeded";
-      state.usage = action.payload?.usage || null;
-      state.duration = action.payload?.duration || null;
       if (state.streamingResponse) {
-        state.messages = [...state.messages, { role: "assistant", content: state.streamingResponse }];
+        const msg = { role: "assistant", content: state.streamingResponse };
+        if (action.payload?.usage) msg.usage = action.payload.usage;
+        if (action.payload?.duration != null) msg.duration = action.payload.duration;
+        state.messages = [...state.messages, msg];
         state.streamingResponse = "";
       }
     },
@@ -203,26 +213,38 @@ const agentSlice = createSlice({
       const data = action.payload;
       state.conversationId = data.id;
       state.messages = data.messages || [];
+      state.summary = data.summary || null;
       state.streamingResponse = "";
       state.status = "idle";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
+      state.compressing = false;
     },
     resetChat(state) {
       state.conversationId = null;
       state.messages = [];
+      state.summary = null;
       state.streamingResponse = "";
       state.status = "idle";
       state.error = null;
-      state.usage = null;
-      state.duration = null;
+      state.compressing = false;
     },
     setMaxOutputTokens(state, action) {
       state.maxOutputTokens = action.payload;
     },
     setTemperature(state, action) {
       state.temperature = action.payload;
+    },
+    setAutoCompress(state, action) {
+      state.autoCompress = action.payload;
+    },
+    setKeepLastN(state, action) {
+      state.keepLastN = action.payload;
+    },
+    setCompressing(state, action) {
+      state.compressing = action.payload;
+    },
+    setSummary(state, action) {
+      state.summary = action.payload;
     },
     setModels(state, action) {
       state.models = action.payload;
@@ -250,6 +272,10 @@ export const {
   resetChat,
   setMaxOutputTokens,
   setTemperature,
+  setAutoCompress,
+  setKeepLastN,
+  setCompressing,
+  setSummary,
   setModels,
   setDefaultModel,
   setSelectedModel,

@@ -1,11 +1,12 @@
 class Conversation
   attr_reader :id, :created_at
-  attr_accessor :title, :updated_at
+  attr_accessor :title, :updated_at, :summary
 
-  def initialize(id: nil, title: "New conversation", messages: [], created_at: nil, updated_at: nil)
+  def initialize(id: nil, title: "New conversation", messages: [], summary: nil, created_at: nil, updated_at: nil)
     @id = id || generate_id
     @title = title
     @messages = messages
+    @summary = summary
     @created_at = created_at || Time.now.iso8601
     @updated_at = updated_at || @created_at
   end
@@ -14,8 +15,24 @@ class Conversation
     @messages.dup
   end
 
-  def add_message(role:, content:)
-    @messages << { role: role, content: content }
+  def api_messages
+    msgs = @messages.map { |m| { role: m[:role], content: m[:content] } }
+    return msgs if @summary.blank?
+
+    [{ role: "system", content: "Summary of earlier conversation:\n#{@summary}" }, *msgs]
+  end
+
+  def replace_oldest_with_summary(count, new_summary)
+    @messages = @messages.drop(count)
+    @summary = new_summary
+    @updated_at = Time.now.iso8601
+  end
+
+  def add_message(role:, content:, usage: nil, duration: nil)
+    msg = { role: role, content: content }
+    msg[:usage] = usage if usage
+    msg[:duration] = duration if duration
+    @messages << msg
     @updated_at = Time.now.iso8601
   end
 
@@ -30,13 +47,32 @@ class Conversation
     @title = query.truncate(60)
   end
 
+  def total_usage
+    totals = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
+    @messages.each do |m|
+      next unless m[:usage]
+
+      totals[:input_tokens] += m[:usage][:input_tokens].to_i
+      totals[:output_tokens] += m[:usage][:output_tokens].to_i
+      totals[:total_tokens] += m[:usage][:total_tokens].to_i
+    end
+    totals
+  end
+
+  def total_duration
+    @messages.sum { |m| m[:duration].to_f }.round(2)
+  end
+
   def to_hash
     {
       id: @id,
       title: @title,
+      summary: @summary,
       created_at: @created_at,
       updated_at: @updated_at,
-      messages: @messages
+      messages: @messages,
+      total_usage: total_usage,
+      total_duration: total_duration
     }
   end
 

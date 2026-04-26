@@ -5,9 +5,15 @@ module Openai
     ENDPOINT = "https://api.openai.com/v1/responses"
     TIMEOUT = 60 # seconds
 
+    attr_reader :model
+
     def initialize(api_key: ENV.fetch("OPENAI_API_KEY"), model: ENV.fetch("OPENAI_MODEL"))
       @api_key = api_key
       @model = model
+    end
+
+    def context_window_limit
+      ModelLimits.for(@model)
     end
 
     CHAT_MODEL_PATTERN = /\A(gpt-[345]|o[134])/
