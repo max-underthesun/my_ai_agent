@@ -5,6 +5,8 @@ export default function QueryInput({
   status,
   maxOutputTokens,
   temperature,
+  autoCompress,
+  keepLastN,
   models,
   defaultModel,
   selectedModel,
@@ -34,10 +36,12 @@ export default function QueryInput({
       </div>
       <div className="d-flex align-items-start justify-content-between mb-2">
         <div>
-          {(maxOutputTokens || temperature != null) && (
+          {(maxOutputTokens || temperature != null || autoCompress || keepLastN) && (
             <div className="text-muted small">
               {maxOutputTokens && <div>Max output tokens: {maxOutputTokens}</div>}
               {temperature != null && <div>Temperature: {temperature}</div>}
+              {autoCompress && <div>Auto-compression: on</div>}
+              {keepLastN && <div>Keep last N: {keepLastN}</div>}
             </div>
           )}
         </div>

@@ -1,11 +1,12 @@
 class Conversation
   attr_reader :id, :created_at
-  attr_accessor :title, :updated_at
+  attr_accessor :title, :updated_at, :summary
 
-  def initialize(id: nil, title: "New conversation", messages: [], created_at: nil, updated_at: nil)
+  def initialize(id: nil, title: "New conversation", messages: [], summary: nil, created_at: nil, updated_at: nil)
     @id = id || generate_id
     @title = title
     @messages = messages
+    @summary = summary
     @created_at = created_at || Time.now.iso8601
     @updated_at = updated_at || @created_at
   end
@@ -15,7 +16,16 @@ class Conversation
   end
 
   def api_messages
-    @messages.map { |m| { role: m[:role], content: m[:content] } }
+    msgs = @messages.map { |m| { role: m[:role], content: m[:content] } }
+    return msgs if @summary.blank?
+
+    [{ role: "system", content: "Summary of earlier conversation:\n#{@summary}" }, *msgs]
+  end
+
+  def replace_oldest_with_summary(count, new_summary)
+    @messages = @messages.drop(count)
+    @summary = new_summary
+    @updated_at = Time.now.iso8601
   end
 
   def add_message(role:, content:, usage: nil, duration: nil)
@@ -57,6 +67,7 @@ class Conversation
     {
       id: @id,
       title: @title,
+      summary: @summary,
       created_at: @created_at,
       updated_at: @updated_at,
       messages: @messages,

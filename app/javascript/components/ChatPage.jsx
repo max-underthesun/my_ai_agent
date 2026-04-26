@@ -8,6 +8,8 @@ import {
   resetChat,
   setMaxOutputTokens,
   setTemperature,
+  setAutoCompress,
+  setKeepLastN,
   setSelectedModel,
   fetchModels,
   fetchConversations,
@@ -34,6 +36,10 @@ export default function ChatPage() {
     conversations,
     maxOutputTokens,
     temperature,
+    autoCompress,
+    keepLastN,
+    summary,
+    compressing,
     models,
     defaultModel,
     selectedModel,
@@ -67,6 +73,8 @@ export default function ChatPage() {
         <MessageArea
           messages={messages}
           streamingResponse={streamingResponse}
+          summary={summary}
+          compressing={compressing}
           error={error}
           isFailed={status === "failed"}
         />
@@ -76,6 +84,8 @@ export default function ChatPage() {
           status={status}
           maxOutputTokens={maxOutputTokens}
           temperature={temperature}
+          autoCompress={autoCompress}
+          keepLastN={keepLastN}
           models={models}
           defaultModel={defaultModel}
           selectedModel={selectedModel}
@@ -92,8 +102,22 @@ export default function ChatPage() {
           show={showOptions}
           maxOutputTokens={maxOutputTokens}
           temperature={temperature}
-          onSave={(opts) => { dispatch(setMaxOutputTokens(opts.maxOutputTokens)); dispatch(setTemperature(opts.temperature)); setShowOptions(false); }}
-          onClear={() => { dispatch(setMaxOutputTokens(null)); dispatch(setTemperature(null)); setShowOptions(false); }}
+          autoCompress={autoCompress}
+          keepLastN={keepLastN}
+          onSave={(opts) => {
+            dispatch(setMaxOutputTokens(opts.maxOutputTokens));
+            dispatch(setTemperature(opts.temperature));
+            dispatch(setAutoCompress(opts.autoCompress));
+            dispatch(setKeepLastN(opts.keepLastN));
+            setShowOptions(false);
+          }}
+          onClear={() => {
+            dispatch(setMaxOutputTokens(null));
+            dispatch(setTemperature(null));
+            dispatch(setAutoCompress(false));
+            dispatch(setKeepLastN(null));
+            setShowOptions(false);
+          }}
           onClose={() => setShowOptions(false)}
         />
 
